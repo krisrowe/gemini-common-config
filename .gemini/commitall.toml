@@ -1,0 +1,51 @@
+description = "Dynamic pre-commit and commit workflow for all active repositories."
+prompt = """
+Perform a comprehensive commit and push workflow for all active git repositories in the current session context.
+
+## 1. Discovery, Classification & Identity Resolution
+For each git repository in the current session:
+
+1.  **Check Status:** Determine if there are changes to stage/commit OR commits ready to push (ahead of remote).
+    *   *If Clean & Synced:* Mark as `Skipped` (No identity check needed).
+    *   *If Active (Dirty or Ahead):* Proceed to Identity Resolution.
+
+2.  **Resolve Identity (Active Repos Only):**
+    *   **Rule 1 (History):** Analyze the git log. If **(All commits use the same email)** OR **(The first commit AND the last 10 commits AND 90% of all commits use the same email)** -> **Assume that email**.
+    *   **Rule 2 (Config):** If Rule 1 fails, look for a `.gemini/settings.json` or `config.yaml` specifying identity.
+    *   **Rule 3 (Unresolved):** If identity cannot be determined by the above, mark as `NEEDS INPUT`.
+
+3.  **Classify:**
+    *   **Public:** Remote URL contains `github.com` (and is not explicitly private/internal).
+    *   **Private:** Remote URL is internal/corporate.
+    *   **Local-Only:** No remote configured.
+
+**Output:** Display this "Repository Status" table **BEFORE** taking any modifying actions.
+| Path | Class | Status | Detected Identity | Source |
+|:---|:---|:---|:---|:---|
+| `~/ws/foo` | Public | Dirty | `me@work.com` | History (90%+) |
+| `~/ws/bar` | Local | Clean | N/A | - |
+| `~/ws/baz` | Private | Ahead 1 | `?` | **NEEDS INPUT** |
+
+**STOP CONDITION:** If any repo is marked `NEEDS INPUT`, **STOP** and ask the user for clarification before proceeding.
+
+## 2. Execution Pipeline
+Process each **Active** repository.
+
+### A. Public / External Repositories
+1.  **Validate Pushes:** If pushing existing commits, verify their author email matches the `Detected Identity`. If there is a mismatch, STOP and warn the user.
+2.  **Sync:** `git pull --rebase`.
+3.  **Verify & Scan:** (Only if creating new commits) Run tests (`pytest`, `npm test`) and `consult precommit`. STOP on failure.
+4.  **Commit:** Enforce the `Detected Identity`. Create a clean, product-focused commit message.
+5.  **Push:** Push to origin.
+
+### B. Private / Local Repositories
+1.  **Commit:** Enforce the `Detected Identity`.
+2.  **Backup:**
+    *   **Local-Only:** Run `consult backup local-repo`.
+    *   **Private Remote:** Push to remote.
+
+## Final Report
+At the end, provide a structured execution report.
+*   One table per processed repository.
+*   **Columns:** `Step` | `Status` | `Details`
+"""
