@@ -1,51 +1,36 @@
 description = "Dynamic pre-commit and commit workflow for all active repositories."
 prompt = """
-Perform a comprehensive commit and push workflow for all active git repositories in the current session context.
+Perform a comprehensive commit and push workflow for all active git repositories in the current workspace.
 
-## 1. Discovery, Classification & Identity Resolution
-For each git repository in the current session:
+## 1. Discovery & Status Check
+Run `consult workspace` to analyze the status, classification, and identity of all repositories in the current context.
 
-1.  **Check Status:** Determine if there are changes to stage/commit OR commits ready to push (ahead of remote).
-    *   *If Clean & Synced:* Mark as `Skipped` (No identity check needed).
-    *   *If Active (Dirty or Ahead):* Proceed to Identity Resolution.
-
-2.  **Resolve Identity (Active Repos Only):**
-    *   **Rule 1 (History):** Analyze the git log. If **(All commits use the same email)** OR **(The first commit AND the last 10 commits AND 90% of all commits use the same email)** -> **Assume that email**.
-    *   **Rule 2 (Config):** If Rule 1 fails, look for a `.gemini/settings.json` or `config.yaml` specifying identity.
-    *   **Rule 3 (Unresolved):** If identity cannot be determined by the above, mark as `NEEDS INPUT`.
-
-3.  **Classify:**
-    *   **Public:** Remote URL contains `github.com` (and is not explicitly private/internal).
-    *   **Private:** Remote URL is internal/corporate.
-    *   **Local-Only:** No remote configured.
-
-**Output:** Display this "Repository Status" table **BEFORE** taking any modifying actions.
-| Path | Class | Status | Detected Identity | Source |
-|:---|:---|:---|:---|:---|
-| `~/ws/foo` | Public | Dirty | `me@work.com` | History (90%+) |
-| `~/ws/bar` | Local | Clean | N/A | - |
-| `~/ws/baz` | Private | Ahead 1 | `?` | **NEEDS INPUT** |
-
-**STOP CONDITION:** If any repo is marked `NEEDS INPUT`, **STOP** and ask the user for clarification before proceeding.
+**Analyze the Output:**
+*   **Active Repos:** Any repo marked as `Dirty`, `Ahead`, `Diverged`, `Not Backed Up`, or `Outdated Backup`.
+*   **Identity Check:** If any Active repo has `Identity` = `?` or `Confidence` = `None`/`Low`, **STOP** and ask the user for clarification before proceeding.
 
 ## 2. Execution Pipeline
-Process each **Active** repository.
+Process each **Active** repository based on its `Class` from the workspace table.
 
-### A. Public / External Repositories
-1.  **Validate Pushes:** If pushing existing commits, verify their author email matches the `Detected Identity`. If there is a mismatch, STOP and warn the user.
-2.  **Sync:** `git pull --rebase`.
-3.  **Verify & Scan:** (Only if creating new commits) Run tests (`pytest`, `npm test`) and `consult precommit`. STOP on failure.
-4.  **Commit:** Enforce the `Detected Identity`. Create a clean, product-focused commit message.
-5.  **Push:** Push to origin.
+**Universal Step:** If a remote exists (Class is `Public` or `Private`), always run `git pull --rebase` before committing.
 
-### B. Private / Local Repositories
-1.  **Commit:** Enforce the `Detected Identity`.
-2.  **Backup:**
-    *   **Local-Only:** Run `consult backup local-repo`.
-    *   **Private Remote:** Push to remote.
+### A. Public Repositories (Class: `Public`)
+1.  **Sync:** `git pull --rebase`.
+2.  **Verify & Scan:** Run `pytest` (or relevant test command) and `consult precommit`.
+    *   **STOP** immediately if any check fails.
+3.  **Commit:** Create a clean, product-focused commit message using the detected `Identity` email.
+4.  **Push:** Push to origin.
+
+### B. Private & Local-Only Repositories (Class: `Private`, `Local-Only`)
+1.  **Sync:** `git pull --rebase` (if Class is `Private` / has remote).
+2.  **Commit:** Create a commit using the detected `Identity` email.
+    *   **SKIP** `consult precommit` and tests for these repositories unless explicitly requested.
+3.  **Backup:**
+    *   **Class `Private`:** Push to remote.
+    *   **Class `Local-Only`:** Run `consult backup local-repo`.
 
 ## Final Report
 At the end, provide a structured execution report.
 *   One table per processed repository.
-*   **Columns:** `Step` | `Status` | `Details`
+*   **Columns:** `Repo` | `Step` | `Status` | `Details`
 """
