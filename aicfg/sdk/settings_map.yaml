@@ -1,0 +1,18 @@
+# Mapping of user-friendly aliases to Gemini settings.json paths
+# Each entry defines:
+#   path: The dot-notation path in settings.json
+#   type: bool | string | int | list
+
+respect-gitignore:
+  path: context.fileFiltering.respectGitIgnore
+  type: bool
+  restart: true
+
+preview-features:
+  path: general.previewFeatures
+  type: bool
+  restart: true
+
+context-file:
+  path: context.fileName
+  type: list_or_string  # Special handling for single string or array
