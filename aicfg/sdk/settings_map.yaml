@@ -2,17 +2,45 @@
 # Each entry defines:
 #   path: The dot-notation path in settings.json
 #   type: bool | string | int | list
+#   description: A short help string for discovery
 
 respect-gitignore:
   path: context.fileFiltering.respectGitIgnore
   type: bool
   restart: true
+  description: "Respect .gitignore patterns when listing files"
 
 preview-features:
   path: general.previewFeatures
   type: bool
   restart: true
+  description: "Enable experimental features (requires restart)"
 
 context-file:
   path: context.fileName
-  type: list_or_string  # Special handling for single string or array
+  type: list_or_string
+  description: "File(s) used for context (e.g. GEMINI.md)"
+
+include-directories:
+  path: context.includeDirectories
+  type: list
+  restart: true
+  description: "Directories to include in context analysis"
+
+log-level:
+  path: general.logLevel
+  type: string
+  restart: false
+  description: "Logging verbosity (DEBUG, INFO, ERROR)"
+
+max-line-length:
+  path: terminal.maxLineLength
+  type: int
+  restart: false
+  description: "Maximum line length for terminal output"
+
+allowed-tools:
+  path: tools.allowed
+  type: list
+  restart: true
+  description: "List of enabled tool names"

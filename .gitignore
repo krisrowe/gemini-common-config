@@ -16,3 +16,5 @@ dist/
 
 # Testing
 .pytest_cache/
+.gemini/
+*.zip

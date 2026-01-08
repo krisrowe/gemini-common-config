@@ -1,54 +1,59 @@
 import os
 import subprocess
 from pathlib import Path
-import sys
 from typing import Optional
 
-# Standard XDG location for active commands (User Scope)
-XDG_CMDS_DIR = Path.home() / ".gemini" / "commands"
+# --- Central Path Functions with Environment Variable Overrides ---
 
-def get_repo_root() -> Path:
+def get_user_scoped_gemini_dir() -> Path:
     """
-    Locate the repository root relative to this module.
-    This works when the package is installed in 'editable' mode (-e).
+    Returns the user's Gemini config directory.
+    Priority: AICFG_USER_DIR env var > ~/.gemini
     """
-    # .../gemini-common-config/aicfg/sdk/config.py -> .../gemini-common-config/
+    path_str = os.environ.get("AICFG_USER_DIR")
+    if path_str:
+        return Path(path_str)
+    return Path.home() / ".gemini"
+
+def get_aicfg_tool_repo_dir() -> Path:
+    """
+    Returns the root directory of the aicfg tool repository.
+    Priority: AICFG_REPO_DIR env var > discovered git root.
+    """
+    path_str = os.environ.get("AICFG_REPO_DIR")
+    if path_str:
+        return Path(path_str)
+    
+    # Discover relative to this file
     package_dir = Path(__file__).resolve().parent
     repo_root = package_dir.parent.parent
     
     # Validation
-    expected_cmds_dir = repo_root / ".gemini" / "commands"
-    if not expected_cmds_dir.exists():
+    if not (repo_root / ".git").exists() and not os.environ.get("AICFG_SKIP_GIT_CHECK_FOR_TESTS"):
         raise FileNotFoundError(
-            f"Could not locate repo commands directory at {expected_cmds_dir}.\n"
-            "Ensure 'aicfg' is installed in editable mode."
+            f"Could not locate .git directory in discovered repo root: {repo_root}.\n"
+            "Ensure 'aicfg' is installed in editable mode from a git repository."
         )
     return repo_root
 
-def get_registry_cmds_dir() -> Path:
-    """Returns the 'Registry' commands directory (in gemini-common-config)."""
-    return get_repo_root() / ".gemini" / "commands"
+# --- Derived Paths ---
 
-def get_git_root() -> Optional[Path]:
-    try:
-        root = subprocess.check_output(
-            ["git", "rev-parse", "--show-toplevel"], 
-            stderr=subprocess.DEVNULL
-        ).decode().strip()
-        return Path(root)
-    except subprocess.CalledProcessError:
-        return None
+def get_user_cmds_dir() -> Path:
+    """User-scoped commands directory (~/.gemini/commands)."""
+    return get_user_scoped_gemini_dir() / "commands"
+
+def get_registry_cmds_dir() -> Path:
+    """Registry commands directory (in gemini-common-config)."""
+    return get_aicfg_tool_repo_dir() / ".gemini" / "commands"
 
 def get_project_cmds_dir() -> Path:
-    """
-    Returns the Project commands directory.
-    Prioritizes git root, falls back to CWD.
-    """
-    root = get_git_root()
-    if root:
-        return root / ".gemini" / "commands"
-    return Path.cwd() / ".gemini" / "commands"
+    """Project-scoped commands directory (./.gemini/commands)."""
+    try:
+        root = subprocess.check_output(["git", "rev-parse", "--show-toplevel"], stderr=subprocess.DEVNULL).decode().strip()
+        return Path(root) / ".gemini" / "commands"
+    except subprocess.CalledProcessError:
+        return Path.cwd() / ".gemini" / "commands"
 
 def ensure_dirs():
-    """Ensure XDG directory exists."""
-    XDG_CMDS_DIR.mkdir(parents=True, exist_ok=True)
+    """Ensure user command directory exists."""
+    get_user_cmds_dir().mkdir(parents=True, exist_ok=True)

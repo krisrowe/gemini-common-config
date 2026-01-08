@@ -18,7 +18,7 @@ test:
 		echo "pytest not found in pipx venv. Running install-dev..."; \
 		$(MAKE) install-dev; \
 	fi
-	$(PYTEST) tests/integration
+	$(PYTEST) tests
 
 clean:
 	rm -rf build dist *.egg-info __pycache__

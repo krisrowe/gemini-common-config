@@ -54,10 +54,11 @@ help="Filter by scope (can specify multiple)")
 def list_cmds(as_json, format, filter_pattern, scopes):
     """List all commands. Optional filters for name and scope."""
     
-    # Convert tuple to list for SDK, or None if empty (implies all)
+    # Convert tuple to list for SDK, or None if empty (implies all) 
     scope_list = list(scopes) if scopes else None
     
     results = sdk.list_commands(filter_pattern=filter_pattern, scopes=scope_list)
+    results = sorted(results, key=lambda x: x["name"])
     
     if as_json or format == "json":
         console.print_json(data=results)
@@ -93,6 +94,20 @@ def list_cmds(as_json, format, filter_pattern, scopes):
         table.add_row(*row)
 
     console.print(table)
+
+@cmds.command()
+@click.argument("name")
+@click.option("--update", is_flag=True, help="Overwrite if command exists in registry and content differs.")
+@click.option("--source-scope", type=click.Choice(["user", "project"]), help="Explicitly choose source scope for registration.")
+def register(name, update, source_scope):
+    """Register a command from user/project scope to the registry."""
+    try:
+        path = sdk.register_command(name, update=update, source_scope=source_scope)
+        rprint(f"[green]Registered[/green] '{name}' to {path}")
+        rprint(f"[blue]Note:[/blue] Changes to the registry repo ({path.parent}) will need to be committed and pushed to GitHub.")
+    except (ValueError, FileNotFoundError, FileExistsError) as e:
+        rprint(f"[red]Error:[/red] {e}")
+        exit(1)
 
 @cmds.command()
 @click.argument("name")
