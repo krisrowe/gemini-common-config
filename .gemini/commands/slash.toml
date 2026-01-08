@@ -1,0 +1,2 @@
+description = "List all available Gemini slash commands."
+prompt = "Please list all available Gemini slash commands using the list_slash_commands tool."

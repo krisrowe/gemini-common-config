@@ -4,6 +4,7 @@ from typing import Any, Optional
 from mcp.server.fastmcp import FastMCP
 from aicfg.sdk import commands as cmds_sdk
 from aicfg.sdk import settings as settings_sdk
+from aicfg.sdk import mcp_setup as mcp_sdk
 
 logger = logging.getLogger(__name__)
 mcp = FastMCP("aicfg")
@@ -30,12 +31,69 @@ async def add_slash_command(
         return {"error": str(e)}
 
 @mcp.tool()
+async def publish_slash_command(name: str) -> dict[str, Any]:
+    """
+    Publish a local slash command to the common configuration registry.
+    
+    Args:
+        name: The name of the command to publish (e.g., 'fix-bug').
+    """
+    try:
+        registry_path = cmds_sdk.publish_command(name)
+        return {
+            "success": True, 
+            "registry_path": str(registry_path), 
+            "status": "PUBLISHED",
+            "message": f"Command '{name}' published to registry. Remember to commit changes in gemini-common-config."
+        }
+    except Exception as e:
+        logger.error(f"Error publishing command: {e}")
+        return {"error": str(e)}
+
+@mcp.tool()
+async def get_slash_command(name: str) -> dict[str, Any]:
+    """
+    Retrieve the full definition of a slash command.
+    
+    Args:
+        name: The name of the command to retrieve.
+    """
+    try:
+        command = cmds_sdk.get_command(name)
+        if command:
+            return {"name": name, "definition": command}
+        return {"error": f"Command '{name}' not found."}
+    except Exception as e:
+        logger.error(f"Error getting command: {e}")
+        return {"error": str(e)}
+
+@mcp.tool()
+async def list_mcp_servers(scope: str = "user") -> dict[str, Any]:
+    """
+    List all registered MCP servers for a given scope.
+    
+    Args:
+        scope: The configuration scope ('user' or 'project').
+    """
+    try:
+        servers = mcp_sdk.list_mcp_servers(scope)
+        return {"scope": scope, "servers": servers}
+    except Exception as e:
+        logger.error(f"Error listing MCP servers: {e}")
+        return {"error": str(e)}
+
+@mcp.tool()
 async def list_slash_commands(filter_pattern: Optional[str] = None) -> dict[str, Any]:
     """
     List all available slash commands and their status.
     
     Args:
         filter_pattern: Optional shell-style wildcard pattern to filter by name (e.g. "commit*").
+
+    Note: When presenting these to the user, it is recommended to use the following 'Icon [space] Scope Name' format for clarity:
+    - 👤 User
+    - ☁️ Registry
+    - 🏠 Project
     """
     try:
         results = cmds_sdk.list_commands(filter_pattern=filter_pattern)
