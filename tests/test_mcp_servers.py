@@ -33,7 +33,7 @@ def test_mcp_add_from_command(isolated_env, random_server_name, monkeypatch):
 
 def test_mcp_add_from_path(isolated_env, random_server_name):
     """Test registering from a local repository path."""
-    _, registry_dir = isolated_env # registry_dir is a mock repo path
+    _, registry_dir, _ = isolated_env # registry_dir is a mock repo path
     repo_path = registry_dir # For clarity, using as repo_path
     
     # Create a mock setup.py in the mock repo

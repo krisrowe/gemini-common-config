@@ -16,7 +16,7 @@ def _get_servers(scope: str) -> dict:
 
 def test_mcp_add_self(isolated_env, random_server_name):
     """Test registering aicfg itself."""
-    user_dir, _ = isolated_env
+    user_dir, *others = isolated_env
     
     initial_servers = _get_servers("user")
     assert random_server_name not in initial_servers # Ensure clean start
@@ -107,7 +107,7 @@ def test_mcp_add_from_command_name_invalid_illegal_chars(isolated_env):
 
 def test_mcp_add_from_path(isolated_env, random_server_name):
     """Test registering from a local repository path."""
-    user_dir, registry_dir = isolated_env
+    user_dir, registry_dir, _ = isolated_env
     repo_path = registry_dir # Use registry_dir as a mock repo
     
     # Create a mock setup.py or pyproject.toml in the mock repo

@@ -5,7 +5,7 @@ from aicfg.sdk import settings as sdk
 
 def test_allowed_tools_add_remove(isolated_env):
     """Test managing allowed tools in user scope via isolated env."""
-    user_dir, _ = isolated_env
+    user_dir, *others = isolated_env
     user_settings = user_dir / "settings.json"
     
     # Add

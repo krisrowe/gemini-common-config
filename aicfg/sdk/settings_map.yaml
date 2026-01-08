@@ -23,7 +23,23 @@ log-level:
   description: "Logging verbosity (DEBUG, INFO, ERROR)"
 
 max-line-length:
+
   path: terminal.maxLineLength
+
   type: int
+
   restart: false
+
   description: "Maximum line length for terminal output"
+
+
+
+# Internal/Test aliases (not recommended for general use, CLI might filter)
+
+test-list:
+
+  path: internal.testList
+
+  type: list
+
+  description: "Internal list for testing"

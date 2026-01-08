@@ -48,6 +48,11 @@ def get_registry_cmds_dir() -> Path:
 
 def get_project_cmds_dir() -> Path:
     """Project-scoped commands directory (./.gemini/commands)."""
+    # Allow override for testing
+    path_str = os.environ.get("AICFG_PROJECT_DIR")
+    if path_str:
+        return Path(path_str) / ".gemini" / "commands"
+
     try:
         root = subprocess.check_output(["git", "rev-parse", "--show-toplevel"], stderr=subprocess.DEVNULL).decode().strip()
         return Path(root) / ".gemini" / "commands"

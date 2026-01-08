@@ -5,7 +5,7 @@ from aicfg.sdk.settings import get_settings_path, load_json, save_json
 @pytest.fixture
 def setup_server(isolated_env):
     """Helper to register a server for removal tests."""
-    user_dir, _ = isolated_env
+    user_dir, *others = isolated_env
     server_name = "test-removable-server"
     command_name = "test-cmd-to-remove"
     mcp_setup.register_mcp(command=command_name, name=server_name, scope="user")
@@ -40,7 +40,7 @@ def test_mcp_remove_user_negative(isolated_env):
 
 def test_mcp_remove_project_positive(isolated_env):
     """Test removing an existing server from project scope."""
-    user_dir, project_dir = isolated_env
+    user_dir, _, project_dir = isolated_env
     server_name = "proj-removable-server"
     command_name = "proj-cmd-to-remove"
     
