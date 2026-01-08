@@ -53,19 +53,54 @@ def _get_path_for_alias(alias: str) -> str:
 # --- SDK API ---
 
 def add_allowed_tool(name: str, scope: Optional[str] = None) -> tuple[Path, bool]:
-    return _modify_list(name, scope, _get_path_for_alias("allowed-tools"), "add")
+    return _modify_list(name, scope, "tools.allowed", "add")
 
 def remove_allowed_tool(name: str, scope: Optional[str] = None) -> tuple[Path, bool]:
-    return _modify_list(name, scope, _get_path_for_alias("allowed-tools"), "remove")
+    return _modify_list(name, scope, "tools.allowed", "remove")
+
+def get_allowed_tools(scope: Optional[str] = None) -> tuple[Path, List[str]]:
+    return _get_list(scope, "tools.allowed")
 
 def add_include_directory(path: str, scope: Optional[str] = None) -> tuple[Path, bool]:
-    return _modify_list(path, scope, _get_path_for_alias("include-directories"), "add")
+    return _modify_list(path, scope, "context.includeDirectories", "add")
+
+def remove_include_directory(path: str, scope: Optional[str] = None) -> tuple[Path, bool]:
+    return _modify_list(path, scope, "context.includeDirectories", "remove")
+
+def get_include_directories(scope: Optional[str] = None) -> tuple[Path, List[str]]:
+    return _get_list(scope, "context.includeDirectories")
+
+def add_context_file(filename: str) -> Path:
+    # Context files usually default to user scope in this CLI usage
+    path, _ = _modify_list(filename, None, "context.fileName", "add")
+    return path
+
+def remove_context_file(filename: str) -> tuple[Path, bool]:
+    return _modify_list(filename, None, "context.fileName", "remove")
+
+def get_context_files() -> tuple[Path, List[str]]:
+    return _get_list(None, "context.fileName")
+
+def _get_list(scope: Optional[str], path_str: str) -> tuple[Path, List[str]]:
+    path = get_settings_path(scope)
+    data = load_json(path)
+    val = get_by_path(data, path_str)
+    
+    if val is None: return path, []
+    if isinstance(val, str): return path, [val]
+    if isinstance(val, list): return path, val
+    return path, []
 
 def _modify_list(item: str, scope: Optional[str], path_str: str, action: str) -> tuple[Path, bool]:
     path = get_settings_path(scope)
     data = load_json(path)
-    current_list = get_by_path(data, path_str)
-    if current_list is None: current_list = []
+    current_val = get_by_path(data, path_str)
+    
+    # Normalize to list (handle string case for context.fileName)
+    if current_val is None: current_list = []
+    elif isinstance(current_val, str): current_list = [current_val]
+    elif isinstance(current_val, list): current_list = current_val
+    else: current_list = []
     
     changed = False
     if action == "add" and item not in current_list:

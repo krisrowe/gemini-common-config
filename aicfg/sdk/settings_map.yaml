@@ -16,17 +16,6 @@ preview-features:
   restart: true
   description: "Enable experimental features (requires restart)"
 
-context-file:
-  path: context.fileName
-  type: list_or_string
-  description: "File(s) used for context (e.g. GEMINI.md)"
-
-include-directories:
-  path: context.includeDirectories
-  type: list
-  restart: true
-  description: "Directories to include in context analysis"
-
 log-level:
   path: general.logLevel
   type: string
@@ -38,9 +27,3 @@ max-line-length:
   type: int
   restart: false
   description: "Maximum line length for terminal output"
-
-allowed-tools:
-  path: tools.allowed
-  type: list
-  restart: true
-  description: "List of enabled tool names"
