@@ -16,5 +16,9 @@ dist/
 
 # Testing
 .pytest_cache/
-.gemini/
 *.zip
+
+# Gemini - Allow settings and commands, ignore others (logs, etc)
+.gemini/*
+!.gemini/settings.json
+!.gemini/commands/
