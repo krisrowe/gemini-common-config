@@ -18,8 +18,8 @@ def pre_populated_settings(isolated_env):
             "previewFeatures": True,
             "logLevel": "INFO"
         },
-        "internal": {
-            "testList": ["itemA", "itemB"]
+        "test": {
+            "list": ["itemA", "itemB"]
         }
     }
     save_json(user_path, user_data)

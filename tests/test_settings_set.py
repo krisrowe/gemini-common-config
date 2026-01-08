@@ -35,7 +35,7 @@ def test_set_list_value_user_scope(isolated_env):
     sdk.set_setting_by_alias("test-list", "item1, item2, item3", scope="user")
     
     settings_data = load_json(path)
-    assert get_by_path(settings_data, "internal.testList") == ["item1", "item2", "item3"]
+    assert get_by_path(settings_data, "test.list") == ["item1", "item2", "item3"]
 
 def test_set_int_value_user_scope(isolated_env):
     """Test setting an integer value."""

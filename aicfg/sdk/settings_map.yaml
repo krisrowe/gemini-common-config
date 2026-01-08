@@ -36,3 +36,9 @@ max-line-length:
 
 # Internal/Test aliases (not recommended for general use, CLI might filter)
 
+test-list:
+  path: test.list
+  type: list
+  restart: false
+  description: "A test list setting"
+
