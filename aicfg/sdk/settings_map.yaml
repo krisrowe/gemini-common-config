@@ -36,10 +36,3 @@ max-line-length:
 
 # Internal/Test aliases (not recommended for general use, CLI might filter)
 
-test-list:
-
-  path: internal.testList
-
-  type: list
-
-  description: "Internal list for testing"
