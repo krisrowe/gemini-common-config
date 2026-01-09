@@ -19,7 +19,8 @@ def cmds():
 @click.option("--desc", "-d", help="Description of the command")
 @click.option("--scope", type=click.Choice(["user", "project"]),
 default="user", help="Where to create the command (default: user)")
-def add(name, prompt, desc, scope):
+@click.option("--namespace", "-ns", help="Optional namespace (subdirectory) for the command")
+def add(name, prompt, desc, scope, namespace):
     """Add a new command."""
     if not prompt:
         description = desc or "My custom command"
@@ -41,7 +42,7 @@ def add(name, prompt, desc, scope):
             rprint(f"[red]Invalid TOML:[/red] {e}")
             return
 
-    path = sdk.add_command(name, prompt, desc, scope=scope)
+    path = sdk.add_command(name, prompt, desc, scope=scope, namespace=namespace)
     rprint(f"[green]Created[/green] {path} (Scope: [bold]{scope.upper()}[/bold])")
 
 @cmds.command("list")

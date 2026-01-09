@@ -10,18 +10,23 @@ from aicfg.sdk.config import (
 )
 from aicfg.sdk.utils import save_toml, load_toml, get_file_info
 
-def add_command(name: str, prompt: Optional[str] = None, desc: Optional[str] = None, scope: str = "user") -> Path:
+def add_command(name: str, prompt: Optional[str] = None, desc: Optional[str] = None, scope: str = "user", namespace: Optional[str] = None) -> Path:
     ensure_dirs()
     filename = f"{name}.toml"
     
     if scope == "project":
-        target_dir = get_project_cmds_dir()
-        target_dir.mkdir(parents=True, exist_ok=True)
-        path = target_dir / filename
+        base_dir = get_project_cmds_dir()
     elif scope == "registry":
-        path = get_registry_cmds_dir() / filename
+        base_dir = get_registry_cmds_dir()
     else:
-        path = get_user_cmds_dir() / filename
+        base_dir = get_user_cmds_dir()
+    
+    target_dir = base_dir
+    if namespace:
+        target_dir = base_dir / namespace
+        
+    target_dir.mkdir(parents=True, exist_ok=True)
+    path = target_dir / filename
     
     data = {"description": desc or f"Command for {name}", "prompt": prompt or "Write your prompt here..."}
     save_toml(path, data)
@@ -36,19 +41,29 @@ def list_commands(filter_pattern: Optional[str] = None, scopes: Optional[List[st
     valid_scopes = {"user", "registry", "project"}
     active_scopes = set(scopes) if scopes else valid_scopes
     
-    all_paths = []
-    if "user" in active_scopes: all_paths.extend(list(user_dir.glob("*.toml")))
-    if "registry" in active_scopes: all_paths.extend(list(registry_dir.glob("*.toml")))
-    if "project" in active_scopes and project_dir.exists(): all_paths.extend(list(project_dir.glob("*.toml")))
+    # Helper to get relative names (namespaces included)
+    def get_command_names(directory: Path) -> set[str]:
+        if not directory.exists(): return set()
+        return {str(p.relative_to(directory).with_suffix('')) for p in directory.rglob("*.toml")}
+
+    all_names = set()
+    if "user" in active_scopes: all_names.update(get_command_names(user_dir))
+    if "registry" in active_scopes: all_names.update(get_command_names(registry_dir))
+    if "project" in active_scopes: all_names.update(get_command_names(project_dir))
     
-    all_names = sorted({f.stem for f in all_paths})
-    if filter_pattern: all_names = [n for n in all_names if fnmatch.fnmatch(n, filter_pattern)]
+    sorted_names = sorted(list(all_names))
+    if filter_pattern: sorted_names = [n for n in sorted_names if fnmatch.fnmatch(n, filter_pattern)]
     
     results = []
-    for name in all_names:
-        user_info = get_file_info(user_dir / f"{name}.toml") if "user" in active_scopes else {"exists": False, "hash": None}
-        reg_info = get_file_info(registry_dir / f"{name}.toml") if "registry" in active_scopes else {"exists": False, "hash": None}
-        proj_info = get_file_info(project_dir / f"{name}.toml") if "project" in active_scopes else {"exists": False, "hash": None}
+    for name in sorted_names:
+        # Reconstruct path using name (which might contain subdirs)
+        user_path = user_dir / f"{name}.toml"
+        reg_path = registry_dir / f"{name}.toml"
+        proj_path = project_dir / f"{name}.toml"
+
+        user_info = get_file_info(user_path) if "user" in active_scopes else {"exists": False, "hash": None}
+        reg_info = get_file_info(reg_path) if "registry" in active_scopes else {"exists": False, "hash": None}
+        proj_info = get_file_info(proj_path) if "project" in active_scopes else {"exists": False, "hash": None}
         
         relevant_infos = [info for scope, info in [("user", user_info), ("registry", reg_info), ("project", proj_info)] if scope in active_scopes]
         present_hashes = [info["hash"] for info in relevant_infos if info["exists"]]
