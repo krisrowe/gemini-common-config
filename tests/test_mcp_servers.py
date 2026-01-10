@@ -87,3 +87,36 @@ def test_mcp_add_conflict(isolated_env, random_server_name):
     mcp_setup.register_mcp(command="first-cmd", name=random_server_name, scope="user")
     with pytest.raises(FileExistsError, match="already registered"):
         mcp_setup.register_mcp(command="second-cmd", name=random_server_name, scope="user")
+
+def test_check_mcp_startup_success(monkeypatch):
+    """Test check_mcp_startup with a valid server response."""
+    import subprocess
+    
+    mock_response = b'{"jsonrpc":"2.0","id":1,"result":{"capabilities":{}}}'
+    
+    class MockCompletedProcess:
+        returncode = 0
+        stdout = mock_response
+        stderr = b""
+        
+    def mock_run(*args, **kwargs):
+        return MockCompletedProcess()
+        
+    monkeypatch.setattr(subprocess, "run", mock_run)
+    
+    result = mcp_setup.check_mcp_startup(["mock-server", "--stdio"])
+    assert result["success"] is True
+    assert result["response"]["result"]["capabilities"] == {}
+
+def test_check_mcp_startup_failure(monkeypatch):
+    """Test check_mcp_startup handling a server failure/timeout."""
+    import subprocess
+    
+    def mock_run_timeout(*args, **kwargs):
+        raise subprocess.TimeoutExpired(cmd=args[0], timeout=5)
+        
+    monkeypatch.setattr(subprocess, "run", mock_run_timeout)
+    
+    result = mcp_setup.check_mcp_startup(["slow-server"])
+    assert result["success"] is False
+    assert "timed out" in result["error"]

@@ -79,28 +79,70 @@ def register_mcp(
     
     if url:
         config = {"url": url}
-        # Optional: Add a HEAD request test here in the future
     else: # Stdio
-        try:
-            full_command = [mcp_command, "--stdio"] + cli_args
-            subprocess.run(
-                full_command,
-                timeout=2,
-                check=True,
-                capture_output=True,
-                input=b'{"jsonrpc":"2.0","method":"mcp.status","id":1}',
-            )
-            config = {"command": mcp_command, "args": ["--stdio"] + cli_args}
-        except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
-            raise ConnectionError(f"Server command '{mcp_command}' failed startup validation. Error: {e.stderr.decode()}")
-        except FileNotFoundError:
-            raise FileNotFoundError(f"Could not execute command '{mcp_command}'. Is it installed and in your PATH?")
+        full_command = [mcp_command, "--stdio"] + cli_args
+        result = check_mcp_startup(full_command)
+        
+        if not result["success"]:
+             raise ConnectionError(f"Server command '{mcp_command}' failed startup validation. Error: {result.get('error')}")
+        
+        config = {"command": mcp_command, "args": ["--stdio"] + cli_args}
 
     # 5. Register and Save
     settings_data.setdefault("mcpServers", {})[final_name] = config
     save_json(settings_path, settings_data)
     
     return {"name": final_name, "config": config, "path": str(settings_path)}
+
+def check_mcp_startup(command_list: list) -> dict:
+    """
+    Checks if an MCP server starts up correctly by sending an initialize request.
+    Returns a dict with 'success', 'response' (JSON), or 'error'.
+    """
+    init_payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2024-11-05",
+            "capabilities": {},
+            "clientInfo": {"name": "aicfg-check", "version": "1.0"}
+        }
+    }
+    
+    try:
+        process = subprocess.run(
+            command_list,
+            input=json.dumps(init_payload).encode(),
+            capture_output=True,
+            timeout=5,
+            check=False 
+        )
+        
+        if process.returncode != 0 and not process.stdout:
+             return {"success": False, "error": f"Process exited with code {process.returncode}. Stderr: {process.stderr.decode()}"}
+
+        # Try to parse the first line of stdout
+        output_lines = process.stdout.decode().strip().split('\n')
+        if not output_lines:
+             return {"success": False, "error": "No output received from server."}
+             
+        try:
+            response = json.loads(output_lines[0])
+            # Basic validation of JSON-RPC response
+            if "result" in response or "error" in response:
+                 return {"success": True, "response": response}
+            else:
+                 return {"success": False, "error": f"Invalid JSON-RPC response: {output_lines[0]}"}
+        except json.JSONDecodeError:
+             return {"success": False, "error": f"Non-JSON output received: {output_lines[0]}"}
+
+    except subprocess.TimeoutExpired:
+        return {"success": False, "error": "Connection timed out (server took too long to respond)."}
+    except FileNotFoundError:
+        return {"success": False, "error": f"Command not found: {command_list[0]}"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 def remove_mcp_server(name: str, scope: str) -> tuple[Path, bool]:
     settings_path = get_settings_path(scope)

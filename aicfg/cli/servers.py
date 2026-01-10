@@ -52,3 +52,29 @@ def list_mcp(scope):
         cmd_url = cfg.get("url") or cfg.get("command")
         table.add_row(name, cmd_url)
     rprint(table)
+
+@mcp_servers.command("check-startup")
+@click.argument("command")
+@click.argument("args", nargs=-1)
+def check_startup(command, args):
+    """
+    Check if an MCP server command starts up correctly (STDIO).
+    
+    Pipes a JSON-RPC initialize request to the command and checks for a valid response.
+    Use this to diagnose 'disconnected' or unhealthy servers.
+    """
+    import json
+    import sys
+    
+    full_cmd = [command] + list(args)
+    rprint(f"[dim]Testing command: {' '.join(full_cmd)}[/dim]", file=sys.stderr)
+    
+    result = mcp_setup.check_mcp_startup(full_cmd)
+    
+    if result["success"]:
+        rprint("[green]Success![/green] Server responded correctly.", file=sys.stderr)
+        click.echo(json.dumps(result["response"], indent=2))
+    else:
+        rprint("[red]Failed![/red] Server did not respond correctly.", file=sys.stderr)
+        click.echo(json.dumps(result, indent=2))
+        sys.exit(1)

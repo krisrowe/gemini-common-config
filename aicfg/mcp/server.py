@@ -115,6 +115,29 @@ async def add_context_path(path: str) -> dict[str, Any]:
     except Exception as e:
         return {"error": str(e)}
 
+@mcp.tool()
+async def check_mcp_server_startup(command: str, args: Optional[list[str]] = None) -> dict[str, Any]:
+    """
+    Smoke test an MCP server command to see if it starts up correctly (STDIO).
+    
+    This is the best way to verify if an MCP server command is working or not if you've 
+    already confirmed that it's registered with the agent (e.g. via 'gemini mcp list') 
+    and you are seeing it listed with an unhealthy status (e.g. Disconnected).
+    
+    If you reference an MCP tool that the agent cannot find, first check the list of 
+    registered MCP servers. If one reports unhealth, invoke this tool to diagnose the
+    startup issue.
+    
+    Args:
+        command: The command to execute (e.g., 'uv', 'python', 'my-mcp-server').
+        args: Optional list of arguments for the command.
+    """
+    try:
+        full_cmd = [command] + (args or [])
+        return mcp_sdk.check_mcp_startup(full_cmd)
+    except Exception as e:
+        return {"error": str(e)}
+
 @mcp.resource("aicfg://commands")
 async def commands_resource() -> str:
     """List of all slash commands as a JSON resource."""

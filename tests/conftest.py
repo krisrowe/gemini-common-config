@@ -40,9 +40,16 @@ def isolated_env(tmp_path_factory, monkeypatch):
     def mock_subprocess_run(cmd_args, **kwargs):
         cmd_str = " ".join(cmd_args) if isinstance(cmd_args, list) else str(cmd_args)
         
-        # Simulate success for mcp server status check
-        if "--stdio" in cmd_str and "mcp.status" in str(kwargs.get("input", "")):
-            return subprocess.CompletedProcess(args=cmd_args, returncode=0, stdout=b"Mock success", stderr=b"")
+        # Simulate success for mcp server startup check (supports both mcp.status and initialize)
+        input_str = str(kwargs.get("input", ""))
+        if "--stdio" in cmd_str and ("mcp.status" in input_str or "initialize" in input_str):
+            # Return a valid JSON-RPC initialize response
+            return subprocess.CompletedProcess(
+                args=cmd_args, 
+                returncode=0, 
+                stdout=b'{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{},"serverInfo":{"name":"mock","version":"1.0"}}}', 
+                stderr=b""
+            )
             
         # For other calls (like git rev-parse), use the original run
         return original_run(cmd_args, **kwargs)
