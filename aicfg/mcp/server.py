@@ -13,7 +13,8 @@ mcp = FastMCP("aicfg")
 async def add_slash_command(
     name: str,
     prompt: str,
-    description: Optional[str] = None
+    description: Optional[str] = None,
+    namespace: Optional[str] = None
 ) -> dict[str, Any]:
     """
     Add a new slash command to the local configuration.
@@ -22,9 +23,10 @@ async def add_slash_command(
         name: Command name (e.g. 'fix-bug')
         prompt: The prompt text for the command
         description: Short description
+        namespace: Optional namespace (subdirectory) for the command
     """
     try:
-        path = cmds_sdk.add_command(name, prompt, description)
+        path = cmds_sdk.add_command(name, prompt, description, namespace=namespace)
         return {"success": True, "path": str(path), "status": "PRIVATE"}
     except Exception as e:
         logger.error(f"Error adding command: {e}")
