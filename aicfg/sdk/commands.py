@@ -100,8 +100,9 @@ def register_command(name: str, update: bool = False, source_scope: Optional[str
     project_dir = get_project_cmds_dir()
     user_dir = get_user_cmds_dir()
     
-    user_path = user_dir / f"{name}.toml"
-    proj_path = project_dir / f"{name}.toml" if project_dir.exists() else None
+    filename = f"{name}.toml"
+    user_path = user_dir / filename
+    proj_path = project_dir / filename if project_dir.exists() else None
     
     source_path, source_hash = None, None
 
@@ -122,7 +123,11 @@ def register_command(name: str, update: bool = False, source_scope: Optional[str
         elif proj_info["exists"]: source_path, source_hash = proj_path, proj_info["hash"]
         else: raise FileNotFoundError(f"Command '{name}' not found in user or project scope.")
 
-    registry_path = registry_dir / f"{name}.toml"
+    registry_path = registry_dir / filename
+    
+    # Ensure parent directory exists in registry
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    
     reg_info = get_file_info(registry_path)
 
     if reg_info["exists"]:
@@ -137,6 +142,10 @@ def publish_command(name: str) -> Optional[Path]:
     reg_path = get_registry_cmds_dir() / f"{name}.toml"
     user_path = get_user_cmds_dir() / f"{name}.toml"
     if not user_path.exists(): raise FileNotFoundError(f"Command '{name}' not found in User scope.")
+    
+    # Ensure parent directory exists in registry
+    reg_path.parent.mkdir(parents=True, exist_ok=True)
+    
     shutil.copy2(user_path, reg_path)
     return reg_path
 
@@ -145,6 +154,10 @@ def install_command(name: str) -> Optional[Path]:
     user_path = get_user_cmds_dir() / f"{name}.toml"
     reg_path = get_registry_cmds_dir() / f"{name}.toml"
     if not reg_path.exists(): raise FileNotFoundError(f"Command '{name}' not found in Registry.")
+    
+    # Ensure parent directory exists in user scope
+    user_path.parent.mkdir(parents=True, exist_ok=True)
+    
     shutil.copy2(reg_path, user_path)
     return user_path
 

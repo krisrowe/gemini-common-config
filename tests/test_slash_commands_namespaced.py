@@ -19,3 +19,22 @@ def test_slash_commands_list_with_namespace(isolated_env):
     
     assert "root_cmd" in names, "Root command should be listed"
     assert "subdir/nested_cmd" in names, "Namespaced command should be listed with 'namespace/name' format"
+
+def test_register_namespaced_command(isolated_env):
+    """
+    Validates that register_command correctly handles subdirectories.
+    """
+    # 1. Setup: Add a namespaced command in user scope
+    name = "context/test_reg"
+    sdk.add_command("test_reg", prompt="Test", namespace="context", scope="user")
+    
+    # 2. Action: Register to registry
+    reg_path = sdk.register_command(name, source_scope="user")
+    
+    # 3. Assertions
+    assert reg_path.exists()
+    assert "context/test_reg.toml" in str(reg_path)
+    assert reg_path.parent.name == "context"
+    
+    reg_data = sdk.get_command(name)
+    assert reg_data["prompt"] == "Test"
