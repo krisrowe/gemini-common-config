@@ -9,10 +9,11 @@ def paths():
     pass
 
 @paths.command("list")
-@click.option("--scope", type=click.Choice(["user", "project"]), help="Explicit scope")
+@click.option("--scope", type=click.Choice(["user", "project"]), default="project",
+              help="Scope (default: project)")
 def list_paths(scope):
     path, dirs = sdk.get_include_directories(scope=scope)
-    rprint(f"[bold]Config ({scope or 'auto'}):[/bold] {path}")
+    rprint(f"[bold]Config ({scope}):[/bold] {path}")
     if not dirs:
         rprint("[yellow]No paths configured.[/yellow]")
         return
@@ -23,7 +24,8 @@ def list_paths(scope):
 
 @paths.command("add")
 @click.argument("path_to_add")
-@click.option("--scope", type=click.Choice(["user", "project"]), help="Explicit scope")
+@click.option("--scope", type=click.Choice(["user", "project"]), default="project",
+              help="Scope (default: project)")
 def add_path(path_to_add, scope):
     config_path = sdk.add_include_directory(path_to_add, scope=scope)
     rprint(f"[green]Added[/green] '{path_to_add}' to {config_path}")
@@ -31,7 +33,8 @@ def add_path(path_to_add, scope):
 
 @paths.command("remove")
 @click.argument("path_to_remove")
-@click.option("--scope", type=click.Choice(["user", "project"]), help="Explicit scope")
+@click.option("--scope", type=click.Choice(["user", "project"]), default="project",
+              help="Scope (default: project)")
 def remove_path(path_to_remove, scope):
     config_path, removed = sdk.remove_include_directory(path_to_remove, scope=scope)
     if removed:
@@ -75,37 +78,8 @@ def remove_allowed_tool(tool_name, scope):
     else:
         rprint(f"[red]Error:[/red] Tool '{tool_name}' not found in {path}")
 
-@click.group(name="context-file-names")
-def context_files():
-    """Manage context.fileName."""
-    pass
-
-@context_files.command("list")
-def list_context_files():
-    path, files = sdk.get_context_files()
-    rprint(f"[bold]Config:[/bold] {path}")
-    if not files:
-        rprint("[yellow]No context files configured.[/yellow]")
-        return
-    table = Table(show_header=True, header_style="bold cyan")
-    table.add_column("File Name")
-    for f in sorted(files): table.add_row(f)
-    rprint(table)
-
-@context_files.command("add")
-@click.argument("filename")
-def add_context_file(filename):
-    path = sdk.add_context_file(filename)
-    rprint(f"[green]Added[/green] '{filename}' to {path}")
-
-@context_files.command("remove")
-@click.argument("filename")
-def remove_context_file(filename):
-    path, removed = sdk.remove_context_file(filename)
-    if removed:
-        rprint(f"[green]Removed[/green] '{filename}' from {path}")
-    else:
-        rprint(f"[red]File '{filename}' not found in {path}[/red]")
+# NOTE: context-file-names commands moved to aicfg context file-names subgroup.
+# See aicfg/cli/context.py
 
 @click.group()
 def settings():

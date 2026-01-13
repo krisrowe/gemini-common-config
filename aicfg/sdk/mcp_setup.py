@@ -1,3 +1,4 @@
+import fnmatch
 import json
 import os
 import shutil
@@ -155,7 +156,150 @@ def remove_mcp_server(name: str, scope: str) -> tuple[Path, bool]:
     save_json(settings_path, settings_data)
     return settings_path, True
 
-def list_mcp_servers(scope: str) -> dict:
-    settings_path = get_settings_path(scope)
-    settings_data = load_json(settings_path)
-    return settings_data.get("mcpServers", {})
+
+def _load_servers_from_scope(scope: str) -> list[dict]:
+    """Load servers from a single scope, returning list of {name, scope, config}."""
+    results = []
+    try:
+        settings_path = get_settings_path(scope)
+        settings_data = load_json(settings_path)
+        servers = settings_data.get("mcpServers", {})
+        for name, config in servers.items():
+            results.append({
+                "name": name,
+                "scope": scope,
+                "config": config
+            })
+    except Exception:
+        pass
+    return results
+
+
+def _matches_filter(entry: dict, pattern: str) -> bool:
+    """Check if any output field matches the wildcard pattern (case-insensitive)."""
+    pattern_lower = pattern.lower()
+    # Check scope
+    if fnmatch.fnmatch(entry["scope"].lower(), pattern_lower):
+        return True
+    # Check name
+    if fnmatch.fnmatch(entry["name"].lower(), pattern_lower):
+        return True
+    # Check command/url
+    cfg = entry["config"]
+    cmd_url = cfg.get("url") or cfg.get("command") or ""
+    if fnmatch.fnmatch(cmd_url.lower(), pattern_lower):
+        return True
+    return False
+
+
+def get_mcp_server(name: str, scope: Optional[str] = None) -> dict:
+    """
+    Get details for a single MCP server by name, including health check.
+
+    Args:
+        name: Server name to look up.
+        scope: Optional scope filter ('user', 'project', or None for both).
+
+    Returns:
+        Dict with server details and health status, or error if not found.
+    """
+    result = list_mcp_servers(scope=scope)
+
+    server = None
+    for s in result["servers"]:
+        if s["name"] == name:
+            server = s
+            break
+
+    if not server:
+        return {
+            "found": False,
+            "name": name,
+            "scope_searched": scope or "all",
+            "error": f"Server '{name}' not found"
+        }
+
+    cfg = server["config"]
+
+    output = {
+        "found": True,
+        "name": server["name"],
+        "scope": server["scope"],
+        "type": "url" if cfg.get("url") else "stdio",
+        "config": cfg,
+    }
+
+    # Health check for stdio servers
+    if cfg.get("url"):
+        output["health"] = {"status": "skip", "reason": "URL servers not checked"}
+    else:
+        full_cmd = [cfg["command"]] + cfg.get("args", [])
+        check = check_mcp_startup(full_cmd)
+
+        if check["success"]:
+            server_info = check.get("response", {}).get("result", {}).get("serverInfo", {})
+            output["health"] = {
+                "status": "ok",
+                "server_name": server_info.get("name"),
+                "server_version": server_info.get("version"),
+            }
+        else:
+            output["health"] = {
+                "status": "failed",
+                "error": check.get("error", "Unknown error"),
+            }
+
+    return output
+
+
+def list_mcp_servers(
+    scope: Optional[str] = None,
+    filter_pattern: Optional[str] = None
+) -> dict:
+    """
+    List MCP servers with optional scope and filter.
+
+    Args:
+        scope: Optional scope filter ('user', 'project', or None for all).
+        filter_pattern: Optional wildcard pattern to match against any output
+                        column (scope, name, command/url). Case-insensitive.
+
+    Returns:
+        Dict with:
+          - servers: List of {name, scope, config} entries
+          - filters: Dict of active filters {scope: ..., pattern: ...}
+    """
+    # Determine which scopes to load
+    if scope in ("user", "project"):
+        scopes_to_check = [scope]
+    else:
+        scopes_to_check = ["project", "user"]
+
+    # Load servers from selected scopes
+    results = []
+    for s in scopes_to_check:
+        results.extend(_load_servers_from_scope(s))
+
+    # Track count after scope filter (before pattern filter)
+    count_after_scope = len(results)
+
+    # Apply wildcard filter if specified
+    if filter_pattern:
+        results = [e for e in results if _matches_filter(e, filter_pattern)]
+
+    # Sort by scope (project first), then by name
+    results.sort(key=lambda x: (0 if x["scope"] == "project" else 1, x["name"]))
+
+    # Build summary with counts
+    summary = {
+        "total": count_after_scope,
+        "shown": len(results)
+    }
+    if filter_pattern:
+        summary["filter"] = filter_pattern
+
+    return {
+        "servers": results,
+        "scope": scope if scope in ("user", "project") else "all",
+        "summary": summary
+    }

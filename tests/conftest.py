@@ -1,8 +1,27 @@
 import pytest
+import socket
 from pathlib import Path
 import uuid
 import shutil
 import subprocess
+
+
+@pytest.fixture(autouse=True)
+def block_network(request, monkeypatch):
+    """
+    Block all network I/O by default to prevent accidental external calls.
+    Tests in tests/integration/ are excluded from this blocking.
+    """
+    # Skip blocking for integration tests
+    test_path = str(request.fspath)
+    if "/integration/" in test_path:
+        yield
+        return
+
+    def _blocked(*args, **kwargs):
+        raise OSError("Network access blocked in tests")
+    monkeypatch.setattr(socket, "socket", _blocked)
+    yield
 
 @pytest.fixture
 def isolated_env(tmp_path_factory, monkeypatch):

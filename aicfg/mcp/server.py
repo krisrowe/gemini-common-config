@@ -70,16 +70,25 @@ async def get_slash_command(name: str) -> dict[str, Any]:
         return {"error": str(e)}
 
 @mcp.tool()
-async def list_mcp_servers(scope: str = "user") -> dict[str, Any]:
+async def list_mcp_servers(
+    scope: Optional[str] = None,
+    filter_pattern: Optional[str] = None
+) -> dict[str, Any]:
     """
-    List all registered MCP servers for a given scope.
-    
+    List all registered MCP servers with optional filtering.
+
     Args:
-        scope: The configuration scope ('user' or 'project').
+        scope: Optional scope filter ('user' or 'project'). Default shows all scopes.
+        filter_pattern: Optional wildcard pattern to match against any output
+                        column (scope, name, command/url). Case-insensitive.
+
+    Returns:
+        Dict with:
+          - servers: List of {name, scope, config} entries
+          - filters: Dict of active filters (scope, pattern) or None if no filters
     """
     try:
-        servers = mcp_sdk.list_mcp_servers(scope)
-        return {"scope": scope, "servers": servers}
+        return mcp_sdk.list_mcp_servers(scope=scope, filter_pattern=filter_pattern)
     except Exception as e:
         logger.error(f"Error listing MCP servers: {e}")
         return {"error": str(e)}
@@ -103,19 +112,8 @@ async def list_slash_commands(filter_pattern: Optional[str] = None) -> dict[str,
     except Exception as e:
         return {"error": str(e)}
 
-@mcp.tool()
-async def add_context_path(path: str) -> dict[str, Any]:
-    """Add a directory to the Gemini context paths."""
-    try:
-        config_path = settings_sdk.add_include_directory(path)
-        return {
-            "success": True,
-            "config_file": str(config_path),
-            "added_path": path,
-            "tip": "Run '/dir add <path>' in Gemini to apply instantly."
-        }
-    except Exception as e:
-        return {"error": str(e)}
+# NOTE: add_context_path intentionally not exposed as MCP tool.
+# See DESIGN.md "Context Include Paths (CLI-only)" for rationale.
 
 @mcp.tool()
 async def check_mcp_server_startup(command: str, args: Optional[list[str]] = None) -> dict[str, Any]:

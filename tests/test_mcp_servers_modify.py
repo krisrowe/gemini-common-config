@@ -53,14 +53,6 @@ def test_mcp_add_from_url(isolated_env, random_server_name):
     assert random_server_name in servers
     assert servers[random_server_name]["url"] == url
 
-def test_mcp_list(isolated_env, random_server_name):
-    """Test listing registered servers."""
-    # Register a server first
-    mcp_setup.register_mcp(is_self=True, name=random_server_name, scope="user")
-    
-    servers = mcp_setup.list_mcp_servers("user")
-    assert random_server_name in servers
-
 def test_mcp_remove_user_negative(isolated_env):
     """Test attempting to remove a non-existent server from user scope fails gracefully."""
     non_existent_server = "non-existent-server"

@@ -1,67 +1,170 @@
-# Gemini CLI - Common Configuration Assets
+# aicfg - AI Assistant Configuration Manager
 
-This repository hosts a curated collection of **generic, portable** configuration snippets and command definitions for the Gemini CLI.
+A Python CLI for managing configuration across AI coding assistants (Gemini CLI, Claude Code). Centralizes slash commands, MCP servers, context files, and settings.
 
-## Purpose
-The **individual contents** of this repository are designed to be portable and reusable on any workstation (personal or professional) where the Gemini CLI is used. It is **not** a workstation configuration repo and is not intended to be installed as a whole.
+## Quick Start
 
-## Workflow
-Users should cherry-pick individual files or definitions (e.g., custom slash commands) and manually integrate them into their local `~/.gemini` environment as needed.
-
-## Contents
-*   **/commands**: Portable slash command definitions (e.g., `commitall.toml`) designed to be environment-agnostic.
-
-## Management Tool (`aicfg`)
-This repository includes a Python CLI (`aicfg`) to manage the synchronization between this repository and your local `~/.gemini/commands` folder.
-
-### Installation
-Install the tool in **editable mode** to allow it to automatically locate this repository's root:
+After cloning this repository:
 
 ```bash
-make install
+# 1. Install globally via pipx (recommended for daily use)
+pipx install -e . --force
+
+# 2. Verify installation
+aicfg --help
 ```
 
-**Why editable?** The tool uses relative path discovery to find the source-of-truth commands within this repo. An editable install preserves the link to this directory.
+### Register with Gemini CLI
 
-### Quick Start
-Manage your slash commands with simple synchronization workflows:
-
-| Command | Description |
-| :--- | :--- |
-| `aicfg cmds list` | Show status (Private, Available, Published, Dirty) |
-| `aicfg cmds add <name> <prompt>` | Create a new command in your local XDG folder |
-| `aicfg cmds publish <name>` | Promote a local command to this repository |
-| `aicfg cmds install <name>` | Copy a command from this repo to your local XDG |
-| `aicfg cmds diff <name>` | Show differences between local and repo versions |
-
-**Example: Creating and Sharing a Command**
-1. `aicfg cmds add my-fix "Explain this bug: {{context}}"` (Adds to `~/.gemini/commands/`)
-2. `aicfg cmds publish my-fix` (Promotes to `./.gemini/commands/` for git commit)
-
-## Development
-To set up for development and run tests:
+Register aicfg as an MCP server so Gemini CLI can use its tools:
 
 ```bash
-# Installs tool in editable mode and injects test dependencies
-make install-dev
+# Register aicfg's MCP server in your user settings
+aicfg mcp add --self
 
-# Runs the integration tests
+# Verify registration and health
+aicfg mcp show aicfg
+```
+
+You should see `✓ HEALTHY` with server version info.
+
+### Safe Commands to Explore
+
+```bash
+# List your slash commands
+aicfg cmds list
+
+# Show MCP servers (project + user scopes)
+aicfg mcp list
+
+# Check context file status
+aicfg context status
+
+# Show current settings
+aicfg settings list
+```
+
+## Running Tests
+
+The simplest way:
+
+```bash
 make test
 ```
 
-**Test Strategy:**
-The integration tests import and exercise the `aicfg.sdk` modules directly. They do **not** invoke the `aicfg` CLI executable via subprocess.
-*   **Implication:** The package must be installed in the environment (editable mode recommended) for imports to work.
-*   **Coverage:** Tests verify core logic and file operations but bypass Click command parsing.
+### What `make test` Does (Manual Steps)
 
-**Note:** This uses `pipx` to manage the development environment.
+For transparency, here's what happens under the hood:
 
-## Security & Portability
-*   **No local state:** This repo does not store `settings.json`, auth tokens, or absolute paths.
-*   **No secrets:** All code is generic and safe for public use.
+```bash
+# 1. Create virtual environment (if needed)
+python3 -m venv .venv
 
-## Integration Notes
-This configuration makes use of commands available in the [agentic-consult](https://github.com/krisrowe/agentic-consult) repository (e.g., `consult workspace`, `consult precommit`). 
+# 2. Install package in editable mode with dev dependencies
+.venv/bin/pip install -e .[dev]
 
-### Future Plans
-We plan to update the workflow commands to invoke user-configurable pre-commit commands (e.g., `npm run lint`, `ruff check .`) as defined in the project configuration.
+# 3. Run pytest
+.venv/bin/pytest tests
+```
+
+Tests run with network I/O blocked by default (except `tests/integration/`).
+
+## Command Groups
+
+| Group | Purpose |
+|-------|---------|
+| `aicfg cmds` | Manage Gemini slash commands (TOML files) |
+| `aicfg mcp` | Register/list/remove MCP servers |
+| `aicfg context` | Manage context files (CLAUDE.md, GEMINI.md) |
+| `aicfg paths` | Manage `context.includeDirectories` |
+| `aicfg settings` | Manage aliased Gemini settings |
+| `aicfg allowed-tools` | Manage `tools.allowed` list |
+
+### Slash Commands
+
+```bash
+# List commands with status (Private, Available, Published, Dirty)
+aicfg cmds list
+
+# Create a new command locally
+aicfg cmds add my-fix "Explain this bug: {{context}}"
+
+# Promote to this repository for sharing
+aicfg cmds publish my-fix
+
+# Install a command from this repo
+aicfg cmds install commitall
+```
+
+### MCP Servers
+
+```bash
+# Register aicfg itself
+aicfg mcp add --self
+
+# Register by command name (must be on PATH)
+aicfg mcp add --command some-mcp-server --name my-server
+
+# Register by repository path (auto-discovers *-mcp command)
+aicfg mcp add --path /path/to/repo
+
+# List all servers
+aicfg mcp list
+
+# Show details + health check for a server
+aicfg mcp show aicfg
+
+# Filter by pattern
+aicfg mcp list --filter "*consult*"
+
+# Remove a server
+aicfg mcp remove my-server
+```
+
+### Context Files
+
+Unify CLAUDE.md and GEMINI.md into a single shared context file:
+
+```bash
+# Check current state
+aicfg context status
+
+# Unify user-level context files
+aicfg context unify --scope user
+
+# Analyze context with Gemini (requires GEMINI_API_KEY)
+aicfg context analyze user "Summarize my rules"
+
+# Revise context with Gemini
+aicfg context revise user "Add a rule about commit messages"
+```
+
+## Architecture
+
+- **SDK-first**: All logic lives in `aicfg/sdk/`. CLI and MCP are thin wrappers.
+- **Scope convention**: `user` = `~/.gemini/settings.json`, `project` = `./.gemini/settings.json`
+- **No secrets**: This repo contains no local state, auth tokens, or absolute paths.
+
+## Development
+
+```bash
+# Run tests
+make test
+
+# Install globally (editable mode via pipx)
+make install
+
+# Clean build artifacts
+make clean
+```
+
+## Prerequisites
+
+- Python 3.10+
+- pipx (for global installation)
+- Gemini CLI (for MCP integration)
+
+## Related
+
+- [agentic-consult](https://github.com/krisrowe/agentic-consult) - Customer workflow automation with MCP server
+- [gworkspace-access](https://github.com/krisrowe/gworkspace-access) - Google Workspace CLI/SDK
